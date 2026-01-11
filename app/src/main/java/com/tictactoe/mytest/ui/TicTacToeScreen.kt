@@ -35,38 +35,34 @@ import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun TicTacToeScreen(
+    modifier: Modifier = Modifier,
     viewModel: TicTacToeViewModel = koinViewModel(),
-    modifier: Modifier
 ) {
     val state by viewModel.state.collectAsState()
-    val backgroundColor = MaterialTheme.colorScheme.background
-    val textColor = MaterialTheme.colorScheme.onBackground
-    val verticalSpacer = 32.dp
 
     Surface(
         modifier = modifier.fillMaxSize(),
-        color = backgroundColor
+        color = MaterialTheme.colorScheme.background
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(24.dp)
         ) {
 
-            Text(
-                text = when (val result = state.result) {
-                    GameResult.Ongoing -> stringResource(R.string.turn, state.nextPlayer)
-                    is GameResult.Win -> stringResource(R.string.winner, result.winner)
-                    GameResult.Draw -> stringResource(R.string.draw)
-                },
-                color = textColor,
-                style = MaterialTheme.typography.headlineSmall
+            GameStatusText(
+                result = state.result,
+                nextPlayer = state.nextPlayer
             )
-            Spacer(modifier = Modifier.height(verticalSpacer))
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             BoardGrid(
                 board = state.board,
                 onCellClick = viewModel::onCellClicked
             )
-            Spacer(modifier = Modifier.height(verticalSpacer))
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             Button(onClick = viewModel::restart) {
                 Text(stringResource(R.string.restart))
             }
@@ -75,99 +71,121 @@ fun TicTacToeScreen(
 }
 
 @Composable
+private fun GameStatusText(
+    result: GameResult,
+    nextPlayer: Player
+) {
+    Text(
+        text = when (result) {
+            GameResult.Ongoing ->
+                stringResource(R.string.turn, nextPlayer)
+
+            is GameResult.Win ->
+                stringResource(R.string.winner, result.winner)
+
+            GameResult.Draw ->
+                stringResource(R.string.draw)
+        },
+        color = MaterialTheme.colorScheme.onBackground,
+        style = MaterialTheme.typography.headlineSmall
+    )
+}
+
+@Composable
 fun BoardGrid(
     board: Board,
     onCellClick: (Position) -> Unit
 ) {
     val gridLineColor = MaterialTheme.colorScheme.onBackground
-    val cellSize = 100.dp
-    val strokeWidth = 4.dp
-    val fontSize = 48.sp
-    val fontWeight = FontWeight.Bold
-    val blueColor = Color(0xFF1976D2)
-    val redColor = Color(0xFFD32F2F)
 
     Box(
-        modifier = Modifier.size(cellSize * 3)
+        modifier = Modifier.size(BoardUi.CellSize * 3)
     ) {
 
-        Canvas(modifier = Modifier.matchParentSize()) {
-            val size = this.size
-            val thirdW = size.width / 3
-            val thirdH = size.height / 3
+        GridLines(color = gridLineColor)
 
-            // Vertical lines
-            drawLine(
-                color = gridLineColor,
-                start = Offset(thirdW, 0f),
-                end = Offset(thirdW, size.height),
-                strokeWidth = strokeWidth.toPx()
-            )
-            drawLine(
-                color = gridLineColor,
-                start = Offset(thirdW * 2, 0f),
-                end = Offset(thirdW * 2, size.height),
-                strokeWidth = strokeWidth.toPx()
-            )
+        BoardCells(
+            board = board,
+            onCellClick = onCellClick
+        )
+    }
+}
 
-            // Horizontal lines
-            drawLine(
-                color = gridLineColor,
-                start = Offset(0f, thirdH),
-                end = Offset(size.width, thirdH),
-                strokeWidth = strokeWidth.toPx()
-            )
-            drawLine(
-                color = gridLineColor,
-                start = Offset(0f, thirdH * 2),
-                end = Offset(size.width, thirdH * 2),
-                strokeWidth = strokeWidth.toPx()
-            )
+@Composable
+private fun GridLines(color: Color) {
+    Canvas(modifier = Modifier.fillMaxSize()) {
+        val thirdWidth = size.width / 3
+        val stroke = BoardUi.StrokeWidth.toPx()
 
-            // Outer border
-            drawRect(
-                color = gridLineColor,
-                style = Stroke(width = strokeWidth.toPx())
-            )
+        repeat(2) { index ->
+            val offset = (index + 1) * thirdWidth
+            drawLine(color, Offset(offset, 0f), Offset(offset, size.height), stroke)
+            drawLine(color, Offset(0f, offset), Offset(size.width, offset), stroke)
         }
 
-        // Cells
-        Column {
-            repeat(3) { row ->
-                Row {
-                    repeat(3) { col ->
-                        val index = row * 3 + col
-                        val cell = board.get(Position(index))
+        drawRect(
+            color = color,
+            style = Stroke(width = stroke)
+        )
+    }
+}
 
-                        Box(
-                            modifier = Modifier
-                                .size(cellSize)
-                                .clickable(enabled = cell == null) {
-                                    onCellClick(Position(index))
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            when (cell) {
-                                Player.X -> Text(
-                                    text = stringResource(R.string.x),
-                                    fontSize = fontSize,
-                                    fontWeight = fontWeight,
-                                    color = blueColor
-                                )
-
-                                Player.O -> Text(
-                                    text = stringResource(R.string.o),
-                                    fontSize = fontSize,
-                                    fontWeight = fontWeight,
-                                    color = redColor
-                                )
-
-                                null -> Unit
-                            }
-                        }
-                    }
+@Composable
+private fun BoardCells(
+    board: Board,
+    onCellClick: (Position) -> Unit
+) {
+    Column {
+        repeat(3) { row ->
+            Row {
+                repeat(3) { col ->
+                    val position = Position(row * 3 + col)
+                    BoardCell(
+                        player = board.get(position),
+                        onClick = { onCellClick(position) }
+                    )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun BoardCell(
+    player: Player?,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(BoardUi.CellSize)
+            .clickable(enabled = player == null, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        when (player) {
+            Player.X -> Symbol(stringResource(R.string.x), BoardUi.XColor)
+            Player.O -> Symbol(stringResource(R.string.o), BoardUi.OColor)
+            null -> Unit
+        }
+    }
+}
+
+@Composable
+private fun Symbol(
+    value: String,
+    color: Color
+) {
+    Text(
+        text = value,
+        fontSize = BoardUi.SymbolSize,
+        fontWeight = FontWeight.Bold,
+        color = color
+    )
+}
+
+private object BoardUi {
+    val CellSize = 100.dp
+    val StrokeWidth = 5.dp
+    val SymbolSize = 48.sp
+    val XColor = Color(0xFF000098)
+    val OColor = Color(0xFFcb0100)
 }
