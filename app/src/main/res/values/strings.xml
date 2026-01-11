@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">MyTest</string>
+    <string name="turn">Turn : %1$s</string>
+    <string name="winner">Winner : %1$s</string>
+    <string name="draw">Draw</string>
+    <string name="x">X</string>
+    <string name="o">O</string>
+    <string name="restart">Restart</string>
 </resources>
