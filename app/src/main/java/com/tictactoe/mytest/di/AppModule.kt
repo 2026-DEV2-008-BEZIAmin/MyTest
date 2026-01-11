@@ -1,4 +1,5 @@
 package com.tictactoe.mytest.di
 
-class AppModule {
-}
+import org.koin.dsl.module
+
+val appModule = module {}
