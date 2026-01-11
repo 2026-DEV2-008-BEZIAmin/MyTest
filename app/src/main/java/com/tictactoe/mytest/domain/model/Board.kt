@@ -14,4 +14,7 @@ data class Board(
         updated[position.index] = player
         return Board(updated)
     }
+
+    val isFull: Boolean
+        get() = cells.all { it != null }
 }
